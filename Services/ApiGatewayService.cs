@@ -16,9 +16,9 @@ public class ApiGatewayService: IApiGatewayService
         _configuration = configuration;
     }
 
-    public async Task<bool> CallApiGateway(ApplicationSubmittedMessage message, string endpoint)
+    public async Task<string> CallApiGateway(ApplicationSubmittedMessage message, string endpoint)
     {
-        var client = _httpClientFactory.CreateClient();
+        var client = _httpClientFactory.CreateClient($"{endpoint}Client");
         var apiGatewayUrl = _configuration["ApiGateway:BaseUrl"];
 
         try
@@ -27,18 +27,19 @@ public class ApiGatewayService: IApiGatewayService
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation($"ApiGateway call to {endpoint} successful. Status code: {response.StatusCode}");
-                return true;
+                var responseContent = await response.Content.ReadAsStringAsync();
+                return responseContent;
             }
             else
             {
                 _logger.LogError($"ApiGateway call to {endpoint} failed. Status code: {response.StatusCode}, Response: {await response.Content.ReadAsStringAsync()}");
-                return false;
+                return "";
             }
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error calling ApiGateway: {ex.Message}");
-            return false;
+            return "";
         }
     }
 }

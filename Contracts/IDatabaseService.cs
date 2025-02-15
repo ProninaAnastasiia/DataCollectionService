@@ -1,6 +1,4 @@
-﻿using DataCollectionService.Messages;
-
-namespace DataCollectionService.Contracts;
+﻿namespace DataCollectionService.Contracts;
 
 public interface IDatabaseService
 {

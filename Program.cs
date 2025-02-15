@@ -1,3 +1,4 @@
+using System.Reflection;
 using DataCollectionService;
 using DataCollectionService.Contracts;
 using DataCollectionService.Database;
@@ -16,6 +17,8 @@ builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 builder.Services.AddSingleton<IKafkaProducerService, KafkaProducerService>();
 // Add Kafka consumer as a background service
 builder.Services.AddHostedService<KafkaConsumerService>();
+// Add MediatR
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 
 
 var app = builder.Build();
@@ -27,5 +30,15 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Метод для проверки клиента
+app.MapPost("/api/datacollection", () =>
+{
+    // Типа ответ от Anti-Fraud system
+    Console.WriteLine($"Stub method");
+
+    // Возвращаем успешный ответ
+    return Results.Ok("Swagger works!");
+});
 
 app.Run();

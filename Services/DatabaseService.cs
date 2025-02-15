@@ -22,44 +22,77 @@ public class DatabaseService: IDatabaseService
         {
             var collection = _dbContext.GetResponseCollection(collectionToSave);
 
-            dynamic responseDocument;
-            try
+            using (JsonDocument document = JsonDocument.Parse(responseData))
             {
-                responseDocument = JsonSerializer.Deserialize<dynamic>(responseData);
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError($"Error deserializing response data: {ex.Message}");
-                responseDocument = new { Error = "Failed to deserialize response", RawResponse = responseData };
-            }
-
-            // Создаём пустой BsonDocument для записи в MongoDB
-            var bsonDocument = new BsonDocument
-            {
-                { "Timestamp", DateTime.UtcNow }
-            };
-            
-            // Перебираем все ключи и значения в responseDocument
-            var properties = (IDictionary<string, object>)responseDocument;
-            foreach (var property in properties)
-            {
-                // Если свойство является вложенным объектом, рекурсивно преобразуем его в BsonDocument
-                if (property.Value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Object)
+                // Создаём пустой BsonDocument для записи в MongoDB
+                var bsonDocument = new BsonDocument
                 {
-                    bsonDocument.Add(property.Key, BsonDocument.Parse(jsonElement.ToString()));
-                }
-                else
-                {
-                    bsonDocument.Add(property.Key, BsonValue.Create(property.Value));
-                }
-            }
+                    { "Timestamp", DateTime.UtcNow }
+                };
 
-            await collection.InsertOneAsync(bsonDocument);
+                // Перебираем все свойства в корневом объекте
+                foreach (JsonProperty property in document.RootElement.EnumerateObject())
+                {
+                    bsonDocument.Add(property.Name, ConvertJsonElementToBsonValue(property.Value));
+                }
+
+                await collection.InsertOneAsync(bsonDocument);
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError($"Error deserializing response data: {ex.Message}");
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error saving API response to MongoDB: {ex.Message}");
         }
     }
-    
+    private BsonValue ConvertJsonElementToBsonValue(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                var bsonDocument = new BsonDocument();
+                foreach (JsonProperty property in element.EnumerateObject())
+                {
+                    bsonDocument.Add(property.Name, ConvertJsonElementToBsonValue(property.Value));
+                }
+                return bsonDocument;
+            case JsonValueKind.Array:
+                var bsonArray = new BsonArray();
+                foreach (JsonElement arrayElement in element.EnumerateArray())
+                {
+                    bsonArray.Add(ConvertJsonElementToBsonValue(arrayElement));
+                }
+                return bsonArray;
+            case JsonValueKind.String:
+                return element.GetString();
+            case JsonValueKind.Number:
+                if (element.TryGetInt32(out int intValue))
+                {
+                    return intValue;
+                }
+                else if (element.TryGetInt64(out long longValue))
+                {
+                    return longValue;
+                }
+                else if (element.TryGetDouble(out double doubleValue))
+                {
+                    return doubleValue;
+                }
+                else
+                {
+                    return element.GetRawText(); // Fallback to string
+                }
+            case JsonValueKind.True:
+                return true;
+            case JsonValueKind.False:
+                return false;
+            case JsonValueKind.Null:
+                return BsonNull.Value;
+            default:
+                return element.GetRawText(); //Fallback to string; should not happen
+        }
+    }
 }

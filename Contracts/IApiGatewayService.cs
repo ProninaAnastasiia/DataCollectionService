@@ -4,5 +4,5 @@ namespace DataCollectionService.Contracts;
 
 public interface IApiGatewayService
 {
-    Task<bool> CallApiGateway(ApplicationSubmittedMessage message, string endpoint);
+    Task<string> CallApiGateway(ApplicationSubmittedMessage message, string endpoint);
 }

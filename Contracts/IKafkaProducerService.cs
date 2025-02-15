@@ -1,8 +1,6 @@
-﻿using DataCollectionService.Messages;
-
-namespace DataCollectionService.Contracts;
+﻿namespace DataCollectionService.Contracts;
 
 public interface IKafkaProducerService
 {
-    Task PublishDataCollectedMessage(DataCollectedMessage message);
+    Task ProduceAsync(string topic, string message);
 }
